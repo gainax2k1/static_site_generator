@@ -449,7 +449,6 @@ def md_paragraph(md_text): # + marks paragraph tags
 	# Create paragraph as ParentNode with the child nodes		
 	return ParentNode(tag="p", children=child_nodes)
 
-def text_to_children(text):
-	pass
-	 # takes a string of text, returns list of HTMLNodes that represent 
-	# the inline MD using previous functions (think TextNode -> HTMLNode)
+def extract_title(markdown): # pull h1 header from md file
+	
+
