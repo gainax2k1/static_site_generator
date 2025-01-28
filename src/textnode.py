@@ -1,6 +1,7 @@
 from enum import Enum
 from htmlnode import *
 import re #regex
+import os
 
 class TextType(Enum):
     TEXT = "TEXT"      # was "normal"
@@ -28,8 +29,26 @@ class TextNode():
 	def __repr__(self):
 		return f"TextNode({self.text}, {self.text_type.value}, {self.url})"
 	
+	def to_html(self):
+		if self.text_type == TextType.TEXT:
+			return self.text
+		elif self.text_type == TextType.BOLD:
+			return f"<b>{self.text}</b>"
+		elif self.text_type == TextType.ITALIC:
+			return f"<i>{self.text}</i>"
+		elif self.text_type == TextType.CODE:
+			return f"<code>{self.text}</code>"
+		elif self.text_type == TextType.LINK:
+			return f"<a href=\"{self.url}\">{self.text}</a>"
+		elif self.text_type == TextType.IMAGE:
+			return f"<img src=\"{self.url}\" alt=\"{self.text}\">"
+		else:
+			raise ValueError(f"Invalid text type: {self.text_type}")
+	
 
 def text_node_to_html_node(text_node): # receives object of type text node, formats with tags
+	print(f"Converting node: {text_node}")
+
 	match text_node.text_type:
 		case TextType.TEXT:
 			if text_node.text is None:
@@ -77,6 +96,7 @@ def text_node_to_html_node(text_node): # receives object of type text node, form
 
 def split_nodes_delimiter(old_nodes, delimiter, text_type):  #takes in TextNode list, delimter (ie, "'"),
 	# and text type for within the delimeter (ie, TextType.CODE)
+	print(f"Processing delimiter '{delimiter}' for nodes:")
 	delimited_text = [] #to store all the nodes after delimitation
 	for each_node in old_nodes: 
 		if each_node.text_type is not TextType.TEXT: #checks to see if it's a text node, if not, moves on.
@@ -104,8 +124,13 @@ def split_nodes_delimiter(old_nodes, delimiter, text_type):  #takes in TextNode 
         
 		after_text = temp_text[second_delim + len(delimiter):] # Text after the second delimiter
 		if after_text: # only trys to append if there's more text after the delimination
-			delimited_text.append(TextNode(after_text, TextType.TEXT))
+			#delimited_text.append(TextNode(after_text, TextType.TEXT))
+			remaining_nodes = split_nodes_delimiter([TextNode(after_text, TextType.TEXT)], delimiter, text_type)
+			delimited_text.extend(remaining_nodes)
+
+
 		#end of loop, back to top
+		print(f"Found delimiters at positions: {first_delim}, {second_delim}")
 	return delimited_text #list of delimited nodes
 
 def extract_markdown_images(text): # takes raw markdown text and returns a list of tuples.
@@ -297,28 +322,6 @@ def md_blockquote(md_text): # + places blockquote tags
 	return ParentNode(tag="blockquote", children=child_nodes)
 
 def md_unordered_list(md_text): # + places ul tags
-	""" old code
-	# block begins with <ul>, each list item surrounded by <li>
-	if not md_text.strip():
-		return ""  # Return nothing for empty input
-
-	split_md_text = md_text.split('\n') # split block into lines
-	tagged_block = "<ul>\n"  # opening tag for unordered list
-
-	for line in split_md_text: #  going trough each line of block
-		if line.strip(): # ignore empty lines
-			if line.startswith("*") or line.startswith("-"):  
-				content = "<li>" + line[1:].strip() + "</li>"# Remove * or - , then trim whitespace
-			else:
-				# raise ValueError("Unexpected marked line in unordered list.")  # Optional strictness
-				content = line # assuming user intent and * or -  was accidentally forgotten
-			tagged_block += content + "\n"
-
-	tagged_block = tagged_block.rstrip("\n")  # Remove trailing newline
-	tagged_block += "\n</ul>"  # Closing tag for unordered list
-
-	return tagged_block
-	"""
 	if not md_text.strip():
 		return ""
 	split_md_text = md_text.split('\n')
@@ -327,11 +330,10 @@ def md_unordered_list(md_text): # + places ul tags
 		if line.strip():
 			if line.startswith("*") or line.startswith("-"):
 				content = line[1:].strip()
-		else:
-			content = line
-            # Create a LeafNode for each list item
-		list_items.append(LeafNode(tag="li", value=content))
-
+				text_nodes = text_to_textnodes(content)
+				# Convert text nodes to HTML strings and join them
+				formatted_content = "".join([node.to_html() for node in text_nodes])
+				list_items.append(LeafNode(tag="li", value=formatted_content))
     # Create a ParentNode for the ul that contains all list items
 	return ParentNode(tag="ul", children=list_items)
 
@@ -380,7 +382,6 @@ def md_code(md_text): # + marks code tags
         ValueError: 
     """
 
-	
 	if not md_text.startswith("```") and md_text.endswith("```"):
 		raise ValueError(f"Input {md_text} is not a valid Markdown code block.")
 	
@@ -399,33 +400,8 @@ def md_code(md_text): # + marks code tags
 	
 	code_node = LeafNode(tag="code", value=stripped_md_text)
 	return ParentNode(tag="pre", children=[code_node])
-	
 
 def md_heading(md_text): # +  marks heading, depending on number of #
-	""" old code
-	md_text = md_text.strip()
-	if not md_text:
-		return ""  # Return nothing for empty input
-
-	heading_size = 0
-	for char in md_text:
-		if char == "#":
-			heading_size += 1
-		else:
-			break
-	if heading_size < 1 or heading_size > 6:
-		raise ValueError (f"invalid heading size of: {heading_size}")
-				   
-	heading_text = md_text[heading_size:].strip()
-	if not heading_text:
-		raise ValueError(f"# characters not followed by valid content in {md_text}")
-	
-	tagged_block = f"<h{heading_size}>"  # opening tag for heading
-	tagged_block += heading_text
-	tagged_block += f"</h{heading_size}>" 
-
-	return tagged_block
-	"""
 	heading_size = 0
 	for char in md_text:
 		if char == "#":
@@ -450,5 +426,39 @@ def md_paragraph(md_text): # + marks paragraph tags
 	return ParentNode(tag="p", children=child_nodes)
 
 def extract_title(markdown): # pull h1 header from md file
+	if not markdown: # empty string
+		raise Exception("No title found to extract")
+	split_md_text = markdown.split('\n')
+
+	if not split_md_text[0].startswith("# "):
+		raise Exception("No title found to extract")
 	
+	first_line = split_md_text[0].lstrip('# ') #  removes leading "# " from line only
+	return first_line
+
+def generate_page(from_path, template_path, dest_path): # generates html from md
+	print(f"Generating page from {from_path} to {dest_path} using {template_path}")
+	
+	os.makedirs(os.path.dirname(dest_path), exist_ok=True) # Create directory if it doesn't exist
+
+	with open(from_path, 'r') as md_file: # opens from_path as read, ref as md_file
+		markdown_content = md_file.read() # reads data from md_file, stores it in markdown_content, 
+	
+	with open(template_path, 'r') as template_file: # opens from template_path as read, ref as template_file
+		template_content = template_file.read() # reads date from template_file, stores it in template content.
+
+	converted_md_to_html = markdown_to_html_node(markdown_content)
+	html_string = converted_md_to_html.to_html()
+	title = extract_title(markdown_content)
+
+	template_content = template_content.replace("{{ Title }}", title)
+	template_content = template_content.replace("{{ Content }}", html_string)
+
+	with open(dest_path, 'w') as output_file: # opens dest_path as write, ref as output_file
+		output_file.write(template_content)
+
+
+
+	
+
 

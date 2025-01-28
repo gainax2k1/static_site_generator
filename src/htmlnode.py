@@ -26,49 +26,33 @@ class HTMLNode():
     def __repr__(self):
         return f"tag: {self.tag} value: {self.value} children: {self.children} props: {self.props}"
 
-
 class LeafNode(HTMLNode):
-    def __init__(self, tag=None, value=None, attributes=None):
-        super().__init__(tag, value, children=None)
-        self.attributes = attributes or {}
+    def __init__(self, tag=None, value=None, props=None):
+        super().__init__(tag=tag, value=value, children=None, props=props)
 
     def to_html(self):
             if self.value is None:
                 raise ValueError("LeafNode must have a value")
             if self.tag is None:
                 return self.value
-
-            string_to_return = []
-            attribute_pairs = self.attributes.items() #unpacks dictionary into a list of TUPLES
-            for key, values in attribute_pairs: #goes through each tuple, reformatting and appending
-                new_pair = f"{key}=\"{values}\""
-                string_to_return.append(new_pair) 
-
-            joined_string_to_return = f"{' '.join(string_to_return)}" #joins list of reformatted tuples
-            if joined_string_to_return: #checks if there are a joined string of attributes, and adds a space if needed.
-                joined_string_to_return = f" {joined_string_to_return}"
-            
-            attributes_string = f"<{self.tag}{joined_string_to_return}>{self.value}</{self.tag}>" #formats string   
+            props_string = self.props_to_html()
+    
+            attributes_string = f"<{self.tag}{props_string}>{self.value}</{self.tag}>" #formats string   
             return attributes_string
     
 class ParentNode(HTMLNode):
     def __init__(self, tag=None, children=None, props=None):
-        super().__init__() #initiates in parent class
-        self.tag = tag
+        super().__init__(tag=tag, children=children, props=props)
         self.children = children if children is not None else [] #checks if children is empty, creates empty dictionary if missing
-        self.props = props if props is not None else {} #assigns empty dictionary if props is empty
-             
+    
         if self.tag is None:
             raise ValueError("Required tag missing from parent node")
    
     def to_html(self):
         children_html = "" # will store children nodes in html format
-        combined_props = "" # will store aditional key value props if present
-
-        for key, value in self.props.items(): # items function neccessary to extract dictionary to key value paairs
-            if key and value: # ennsures both key and value are present
-                combined_props += f' {key}="{value}"'
-
         for child in self.children:
-            children_html += (child.to_html())
-        return f"<{self.tag}{combined_props}>{children_html}</{self.tag}>"
+            children_html += child.to_html()
+        
+        props_string = self.props_to_html()
+        
+        return f"<{self.tag}{props_string}>{children_html}</{self.tag}>"

@@ -23,13 +23,13 @@ class TestTextNode(unittest.TestCase):
         print(f"htmlnode3: {htmlnode3}")
         print(f"htmlnode4: {htmlnode4}")
 
-        leafnode1 = LeafNode("p", "This is a paragraph of text.")
+        leafnode1 = LeafNode("p", "This is a paragraph *of* text.")
         leafnode2 = LeafNode("a", "Click me!", {"href": "https://www.google.com"})
 
         print(leafnode1)
-        print(leafnode1.to_html)
+        print(leafnode1.to_html())
         print(leafnode2)
-        print(leafnode2.to_html) 
+        print(leafnode2.to_html()) 
 
         print("testing parent/leafs:")
 
