@@ -332,8 +332,8 @@ def md_unordered_list(md_text): # + places ul tags
 				content = line[1:].strip()
 				text_nodes = text_to_textnodes(content)
 				# Convert text nodes to HTML strings and join them
-				formatted_content = "".join([node.to_html() for node in text_nodes])
-				list_items.append(LeafNode(tag="li", value=formatted_content))
+				child_nodes = [text_node_to_html_node(text_node) for text_node in text_nodes]
+				list_items.append(ParentNode(tag="li", children=child_nodes))
     # Create a ParentNode for the ul that contains all list items
 	return ParentNode(tag="ul", children=list_items)
 
@@ -362,44 +362,40 @@ def md_ordered_list(md_text): # + places ordered list tags
 			if match: # This matches numbers (one or more digits),
 				# followed by either a . or ), followed by at least one space, and then the item's content.
 				content = match.group(1).strip()
-				list_items.append(LeafNode(tag="li", value=content))
+				text_nodes = text_to_textnodes(content)
+
+				# Convert text nodes to HTML nodes
+				child_nodes = [text_node_to_html_node(text_node) for text_node in text_nodes]
+				# Create a parent node for the list item
+				list_items.append(ParentNode(tag="li", children=child_nodes))
 			else:
 				raise ValueError("Unexpected unnumbered line {line} in ordered list.")  # Optional strictness
 
 	return ParentNode(tag="ol", children=list_items)
 
 def md_code(md_text): # + marks code tags
-	"""
-    Converts a Markdown code block to an HTML code block (<code>) structure.
+	stripped = md_text.strip()
+	if stripped.startswith("```") and stripped.endswith("```"):
 
-    Args:
-        md_text (str): The Markdown text containing a code block
-
-    Returns:
-        str: An HTML code block as a string, or an empty string for empty input.
-
-    Raises:
-        ValueError: 
-    """
-
-	if not md_text.startswith("```") and md_text.endswith("```"):
-		raise ValueError(f"Input {md_text} is not a valid Markdown code block.")
-	
-	if "\n" in md_text.strip(): # multi-line
-		# Strip only the first and last lines containing ```
-		lines = md_text.split("\n")
-		content_lines = lines[1:-1]  # Everything except the first and last lines
-		stripped_md_text = "\n".join(content_lines).strip()  # Join the code and remove extra whitespace
-		if stripped_md_text == "": # in case there was nothing between md code, returns nothing
-			return ""
-	else: # single line
+		if "\n" in md_text.strip(): # multi-line
+			# Strip only the first and last lines containing ```
+			lines = md_text.split("\n")
+			content_lines = lines[1:-1]  # Everything except the first and last lines
+			stripped_md_text = "\n".join(content_lines).strip()  # Join the code and remove extra whitespace
+			if stripped_md_text == "": # in case there was nothing between md code, returns nothing
+				return ""
+		else: # single line
+			stripped_md_text = md_text.strip('`').strip()
+			if stripped_md_text == "":
+				return ""	
+		code_node = LeafNode(tag="code", value=stripped_md_text)
+		return ParentNode(tag="pre", children=[code_node])
+	if stripped.startswith("`") and stripped.endswith("`"):
 		stripped_md_text = md_text.strip('`').strip()
+		return LeafNode(tag="code", value=stripped_md_text) 
+	else:
+		raise ValueError(f"Input {md_text} is not a valid Markdown code block.")
 
-	if stripped_md_text == "":
-		return ""	
-	
-	code_node = LeafNode(tag="code", value=stripped_md_text)
-	return ParentNode(tag="pre", children=[code_node])
 
 def md_heading(md_text): # +  marks heading, depending on number of #
 	heading_size = 0
@@ -415,7 +411,11 @@ def md_heading(md_text): # +  marks heading, depending on number of #
 	if not heading_text:
 		raise ValueError(f"# characters not followed by valid content in {md_text}")
 	content = md_text.lstrip('#').strip()
-	return LeafNode(tag=f"h{heading_size}", value=content)
+	text_nodes = text_to_textnodes(content)
+	#formatted_content = "".join([node.to_html() for node in text_nodes])
+	#return LeafNode(tag=f"h{heading_size}", value=formatted_content)
+	child_nodes = [text_node_to_html_node(text_node) for text_node in text_nodes]
+	return ParentNode(tag=f"h{heading_size}", children=child_nodes)
 
 def md_paragraph(md_text): # + marks paragraph tags
 	# First get the TextNodes for any inline formatting
@@ -461,8 +461,11 @@ def generate_pages_recursive(dir_path_content, template_path, dest_dir_path): # 
 	# For each md file found, generate .html file using same *template.html*. Write generated pages to public
 
 	content_list = get_list_files(dir_path_content)
-	print(f"Recieved content list: {content_list} from {dir_path_content}")
-	for md_file in content_list:
+
+	# Filter for only markdown files here
+	markdown_files = [f for f in content_list if f.endswith('.md')]
+
+	for md_file in markdown_files:
 		relative_path = os.path.relpath(md_file, "content") # strips 'content' from the file path
 
 		# os.path.splitext splits the path into ('majesty/index', '.md'), for example
