@@ -1,7 +1,9 @@
 from enum import Enum
 from htmlnode import *
+from file_ops import * # handles getting folder listings, clearing public, copying files, etc
 import re #regex
 import os
+import shutil
 
 class TextType(Enum):
     TEXT = "TEXT"      # was "normal"
@@ -10,7 +12,6 @@ class TextType(Enum):
     CODE = "CODE"      # was "code"
     LINK = "LINK"      # was "links"
     IMAGE = "IMAGE"    # was "images"
-
 
 class MarkdownParsingError(Exception):
     pass
@@ -21,12 +22,12 @@ class TextNode():
 		self.text_type = text_type
 		self.url = url
 
-	def __eq__(self, value):
+	def __eq__(self, value): # defines "=" for TextNode instances
 		if self.text == value.text and self.text_type == value.text_type and self.url == value.url:
 			return True
 		return False
 	
-	def __repr__(self):
+	def __repr__(self): # defines how to print instance of TextNode ( so print(my_text_node) works
 		return f"TextNode({self.text}, {self.text_type.value}, {self.url})"
 	
 	def to_html(self):
@@ -45,7 +46,6 @@ class TextNode():
 		else:
 			raise ValueError(f"Invalid text type: {self.text_type}")
 	
-
 def text_node_to_html_node(text_node): # receives object of type text node, formats with tags
 	print(f"Converting node: {text_node}")
 
@@ -213,14 +213,15 @@ def split_nodes_link(old_nodes): # basically same logic as above, but for links 
 			split_link_nodes_to_return.append(TextNode(split_link_text[1], TextType.TEXT))
 	return split_link_nodes_to_return
 
-def text_to_textnodes(text):
-    nodes = [TextNode(text, TextType.TEXT)]
-    split_image = split_nodes_image(nodes)
-    split_link = split_nodes_link(split_image)
-    split_bold = split_nodes_delimiter(split_link, "**", TextType.BOLD)
+def text_to_textnodes(text): # takes markdown document, determines each type, creates text nodes for each piece
+    nodes = [TextNode(text, TextType.TEXT)] # starting node is entire contents, marked as TEXT
+
+    split_image = split_nodes_image(nodes) # goes through first node, spliting at image tags
+    split_link = split_nodes_link(split_image) # takes processed list of nodes from previous, splitting at link tags
+    split_bold = split_nodes_delimiter(split_link, "**", TextType.BOLD) # and so on...
     split_italic = split_nodes_delimiter(split_bold, "*", TextType.ITALIC)
     split_code = split_nodes_delimiter(split_italic, "`", TextType.CODE)
-    return split_code
+    return split_code # shouldl be list of fully type demarkated nodes
 
 def markdown_to_blocks(markdown): #markdown is one large text
 	rough_blocked_md = markdown.split("\n\n")
@@ -290,7 +291,6 @@ def markdown_to_html_node(markdown): # converts full md doc into a single PARENT
 			continue
 		parent_node.children.append(block_node)  # correct
 	return parent_node
-
 
 """ PSEUDO CODE:
 # 1). Split md into blocks (use markdown_to_blocks)
@@ -457,8 +457,18 @@ def generate_page(from_path, template_path, dest_path): # generates html from md
 	with open(dest_path, 'w') as output_file: # opens dest_path as write, ref as output_file
 		output_file.write(template_content)
 
+def generate_pages_recursive(dir_path_content, template_path, dest_dir_path): # crawls everything in content dir
+	# For each md file found, generate .html file using same *template.html*. Write generated pages to public
 
+	content_list = get_list_files(dir_path_content)
+	print(f"Recieved content list: {content_list} from {dir_path_content}")
+	for md_file in content_list:
+		relative_path = os.path.relpath(md_file, "content") # strips 'content' from the file path
 
-	
+		# os.path.splitext splits the path into ('majesty/index', '.md'), for example
+    	# We take [0] to get 'majesty/index' and add '.html'
+		html_path = os.path.splitext(relative_path)[0] + ".html"  # Change the extension from .md to .html
+		destination = os.path.join("public", html_path) # puts "public" where  'content' was in file path
 
+		generate_page(md_file, template_path, destination) # generates the "md_file"
 
