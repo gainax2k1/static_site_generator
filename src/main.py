@@ -2,6 +2,7 @@ from textnode import *
 from file_ops import * # handles getting folder listings, clearing public, copying files, etc
 import shutil
 import os
+import sys
 
 def main():
     print("Current working directory:", os.getcwd())
@@ -39,8 +40,16 @@ def main():
         3. third item
         """
     
+    basepath = "/"
+    try: 
+        if sys.argv[1] != "":
+            basepath = sys.argv[1]
+    except:
+        pass
+    
+
     #print(extract_title(test_md))
-    clear_public_folder() 
+    #clear_public_folder() 
     static_directory = "./static" 
 
     file_list = get_list_files(static_directory) 
@@ -51,8 +60,8 @@ def main():
 
     dir_path_content = "content"
     template_path = "template.html"
-    dest_dir_path = "public"
-
-    generate_pages_recursive(dir_path_content, template_path, dest_dir_path)
+    #dest_dir_path = "public"
+    dest_dir_path = "docs"
+    generate_pages_recursive(dir_path_content, template_path, dest_dir_path, basepath)
 
 main ()

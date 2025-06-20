@@ -445,7 +445,7 @@ def extract_title(markdown): # pull h1 header from md file
 	first_line = split_md_text[0].lstrip('# ') #  removes leading "# " from line only
 	return first_line
 
-def generate_page(from_path, template_path, dest_path): # generates html from md
+def generate_page(from_path, template_path, dest_path, basepath): # generates html from md
 	print(f"Generating page from {from_path} to {dest_path} using {template_path}")
 	
 	os.makedirs(os.path.dirname(dest_path), exist_ok=True) # Create directory if it doesn't exist
@@ -462,11 +462,13 @@ def generate_page(from_path, template_path, dest_path): # generates html from md
 
 	template_content = template_content.replace("{{ Title }}", title)
 	template_content = template_content.replace("{{ Content }}", html_string)
-
+	template_content = template_content.replace('href="/', f'href="{basepath}')
+	template_content = template_content.replace('src="/', f'src="{basepath}')
+	
 	with open(dest_path, 'w') as output_file: # opens dest_path as write, ref as output_file
 		output_file.write(template_content)
 
-def generate_pages_recursive(dir_path_content, template_path, dest_dir_path): # crawls everything in content dir
+def generate_pages_recursive(dir_path_content, template_path, dest_dir_path, basepath): # crawls everything in content dir
 	# For each md file found, generate .html file using same *template.html*. Write generated pages to public
 
 	content_list = get_list_files(dir_path_content)
@@ -482,5 +484,5 @@ def generate_pages_recursive(dir_path_content, template_path, dest_dir_path): # 
 		html_path = os.path.splitext(relative_path)[0] + ".html"  # Change the extension from .md to .html
 		destination = os.path.join("public", html_path) # puts "public" where  'content' was in file path
 
-		generate_page(md_file, template_path, destination) # generates the "md_file"
+		generate_page(md_file, template_path, destination, basepath) # generates the "md_file"
 
