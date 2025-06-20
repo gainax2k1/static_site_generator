@@ -6,12 +6,14 @@ import os
 import shutil
 
 class TextType(Enum):
-    TEXT = "TEXT"      # was "normal"
-    BOLD = "BOLD"      # was "bold"
-    ITALIC = "ITALIC"  # was "italic"
-    CODE = "CODE"      # was "code"
-    LINK = "LINK"      # was "links"
-    IMAGE = "IMAGE"    # was "images"
+	TEXT = "TEXT"      # was "normal"
+	BOLD = "BOLD"      # was "bold"
+	BLOCKQUOTE = "BLOCKQUOTE" # was "blockquote"
+	ITALIC = "ITALIC"  # was "italic"
+	CODE = "CODE"      # was "code"
+	LINK = "LINK"      # was "links"
+	IMAGE = "IMAGE"    # was "images"
+
 
 class MarkdownParsingError(Exception):
     pass
@@ -60,6 +62,12 @@ def text_node_to_html_node(text_node): # receives object of type text node, form
 			if text_node.text is None:
 				raise ValueError("BOLD_TEXT Node has no text")
 			return LeafNode(tag="b", value=text_node.text)
+			# Create a LeafNode for bold text
+
+		case TextType.BLOCKQUOTE:
+			if text_node.text is None:
+				raise ValueError("BLOCKQUOTE_TEXT Node has no text")
+			return LeafNode(tag="<blockquote>", value=text_node.text)
 			# Create a LeafNode for bold text
 
 		case TextType.ITALIC:
@@ -214,14 +222,15 @@ def split_nodes_link(old_nodes): # basically same logic as above, but for links 
 	return split_link_nodes_to_return
 
 def text_to_textnodes(text): # takes markdown document, determines each type, creates text nodes for each piece
-    nodes = [TextNode(text, TextType.TEXT)] # starting node is entire contents, marked as TEXT
-
-    split_image = split_nodes_image(nodes) # goes through first node, spliting at image tags
-    split_link = split_nodes_link(split_image) # takes processed list of nodes from previous, splitting at link tags
-    split_bold = split_nodes_delimiter(split_link, "**", TextType.BOLD) # and so on...
-    split_italic = split_nodes_delimiter(split_bold, "*", TextType.ITALIC)
-    split_code = split_nodes_delimiter(split_italic, "`", TextType.CODE)
-    return split_code # shouldl be list of fully type demarkated nodes
+	nodes = [TextNode(text, TextType.TEXT)] # starting node is entire contents, marked as TEXT
+	split_image = split_nodes_image(nodes) # goes through first node, spliting at image tags
+	split_link = split_nodes_link(split_image) # takes processed list of nodes from previous, splitting at link tags
+	split_bold = split_nodes_delimiter(split_link, "**", TextType.BOLD) # and so on...
+	split_italic = split_nodes_delimiter(split_bold, "*", TextType.ITALIC)
+	split_italic2 = split_nodes_delimiter(split_italic, "_", TextType.ITALIC)
+	split_code = split_nodes_delimiter(split_italic2, "`", TextType.CODE)
+	split_blockquote = split_nodes_delimiter(split_code, ">", TextType.BLOCKQUOTE)
+	return split_blockquote # shouldl be list of fully type demarkated nodes
 
 def markdown_to_blocks(markdown): #markdown is one large text
 	rough_blocked_md = markdown.split("\n\n")
