@@ -482,7 +482,7 @@ def generate_pages_recursive(dir_path_content, template_path, dest_dir_path, bas
 		# os.path.splitext splits the path into ('majesty/index', '.md'), for example
     	# We take [0] to get 'majesty/index' and add '.html'
 		html_path = os.path.splitext(relative_path)[0] + ".html"  # Change the extension from .md to .html
-		destination = os.path.join("public", html_path) # puts "public" where  'content' was in file path
+		destination = os.path.join(dest_dir_path, html_path) # puts "public" where  'content' was in file path
 
 		generate_page(md_file, template_path, destination, basepath) # generates the "md_file"
 
